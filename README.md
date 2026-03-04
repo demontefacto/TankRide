@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TankRide
+
+A web application for tracking and analyzing vehicle operating costs. Manage multiple vehicles, log fuel fill-ups, expenses, and maintenance — all in one place with clear dashboards and charts.
+
+## Features
+
+- **Multi-user** — each user manages their own vehicles and data
+- **Multiple vehicles** with different fuel types (gasoline, diesel, LPG, CNG, electric, hybrid)
+- **Fuel / charging log** with automatic consumption calculation (l/100 km or kWh/100 km) and trend charts
+- **Expense tracking** categorized as service, spare parts, insurance, or other
+- **Maintenance records** (vehicle inspection, emissions, oil change, tires, brakes, …) with optional next-due date/km reminders
+- **Dashboard** with summary stats (total costs, average consumption, cost per km) and interactive charts (category breakdown, monthly trends)
+- **Per-vehicle filtering** on the dashboard
+- **Selectable currency** (CZK, EUR, USD, PLN, GBP) — chosen at registration
+
+## Tech Stack
+
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Database:** SQLite via Prisma ORM
+- **Auth:** NextAuth.js (credentials provider)
+- **Styling:** Tailwind CSS
+- **Charts:** Recharts
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- npm
+
+### Local Development
 
 ```bash
+cd tankride
+npm install
+npx prisma db push
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000), register a new account and start adding vehicles.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Docker
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env` file:
 
-## Learn More
+```env
+NEXTAUTH_SECRET=your-random-secret-here
+NEXTAUTH_URL=http://localhost:3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+Then run:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+docker-compose up -d --build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The SQLite database is persisted in a Docker volume (`tankride-data`).
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+tankride/
+├── prisma/
+│   └── schema.prisma          # Database schema (6 models)
+├── src/
+│   ├── app/                   # Next.js App Router pages & API routes
+│   │   ├── api/               # REST endpoints (auth, vehicles, fuel, expenses, maintenance)
+│   │   ├── vehicles/          # Vehicle CRUD pages
+│   │   ├── fuel/              # Fuel entry pages + consumption chart
+│   │   ├── expenses/          # Expense entry pages
+│   │   ├── maintenance/       # Maintenance record pages
+│   │   └── page.tsx           # Dashboard with stats & charts
+│   ├── components/            # React components (forms, charts, nav)
+│   ├── lib/                   # Prisma client, auth config, utilities
+│   └── types/                 # TypeScript type extensions
+├── Dockerfile
+├── docker-compose.yml
+└── package.json
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Data Model
+
+- **User** — account with email, password, preferred currency
+- **Vehicle** — name, make, model, year, fuel type, license plate
+- **FuelEntry** — date, odometer, quantity, price, total cost
+- **ExpenseEntry** — date, category, description, cost
+- **MaintenanceRecord** — date, type, cost, next due date/km
+- **Station** — *(prepared for future use)* gas station with GPS coordinates
+
+## Roadmap
+
+- [ ] Gas station directory with GPS locations and price comparison
+- [ ] Upcoming maintenance/inspection reminders (notifications)
+- [ ] Localization (i18n via next-intl) — community translations welcome
+- [ ] CSV/PDF export of records
+- [ ] Mobile-optimized PWA
+
+## License
+
+MIT
