@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  currency     String    @default("CZK") // CZK, EUR, USD, PLN, GBP
+  locale       String    @default("cs")
+  createdAt    DateTime  @default(now())
+  vehicles     Vehicle[]
+}
+
+model Vehicle {
+  id              String              @id @default(cuid())
+  userId          String
+  name            String
+  make            String
+  model           String
+  year            Int?
+  licensePlate    String?
+  fuelType        String              // GASOLINE, DIESEL, LPG, CNG, ELECTRIC, HYBRID
+  initialOdometer Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fuelEntries     FuelEntry[]
+  expenseEntries  ExpenseEntry[]
+  maintenance     MaintenanceRecord[]
+
+  @@index([userId])
+}
+
+model FuelEntry {
+  id           String   @id @default(cuid())
+  vehicleId    String
+  date         DateTime
+  odometer     Int
+  quantity     Float    // litry nebo kWh
+  pricePerUnit Float
+  totalCost    Float
+  stationId    String?
+  note         String?
+  createdAt    DateTime @default(now())
+  vehicle      Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  station      Station? @relation(fields: [stationId], references: [id])
+
+  @@index([vehicleId])
+  @@index([date])
+}
+
+model ExpenseEntry {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  date        DateTime
+  category    String   // SERVICE, SPARE_PARTS, INSURANCE, OTHER
+  description String
+  cost        Float
+  odometer    Int?
+  note        String?
+  createdAt   DateTime @default(now())
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([date])
+}
+
+model MaintenanceRecord {
+  id               String    @id @default(cuid())
+  vehicleId        String
+  date             DateTime
+  type             String    // OIL_CHANGE, STK, EMISSION_TEST, TIRE_CHANGE, BRAKE_CHECK, OTHER
+  description      String?
+  odometer         Int?
+  cost             Float?
+  nextDueDate      DateTime?
+  nextDueOdometer  Int?
+  note             String?
+  createdAt        DateTime  @default(now())
+  vehicle          Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([date])
+}
+
+// Připraveno pro budoucí rozšíření – evidence čerpacích stanic
+model Station {
+  id          String      @id @default(cuid())
+  name        String
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  fuelEntries FuelEntry[]
+}

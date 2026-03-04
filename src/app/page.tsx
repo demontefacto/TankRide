@@ -1,101 +1,179 @@
-import Image from "next/image";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { formatCurrency, calculateConsumption, expenseCategoryLabels } from "@/lib/utils";
+import { CategoryPieChart, MonthlyCostChart } from "@/components/DashboardCharts";
+import VehicleSelector from "@/components/VehicleSelector";
 
-export default function Home() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { vehicleId?: string };
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/login");
+
+  const userId = session.user.id;
+  const currency = session.user.currency;
+  const vehicleId = searchParams.vehicleId || null;
+
+  // Filtr podle vozidla
+  const vehicleFilter = vehicleId
+    ? { vehicleId, vehicle: { userId } }
+    : { vehicle: { userId } };
+
+  // Načíst všechna data
+  const [vehicles, fuelEntries, expenseEntries, maintenanceRecords] = await Promise.all([
+    prisma.vehicle.findMany({ where: { userId } }),
+    prisma.fuelEntry.findMany({
+      where: vehicleFilter,
+      include: { vehicle: { select: { fuelType: true } } },
+      orderBy: { date: "asc" },
+    }),
+    prisma.expenseEntry.findMany({ where: vehicleFilter }),
+    prisma.maintenanceRecord.findMany({ where: vehicleFilter }),
+  ]);
+
+  // Celkové náklady
+  const totalFuel = fuelEntries.reduce((s, e) => s + e.totalCost, 0);
+  const totalExpenses = expenseEntries.reduce((s, e) => s + e.cost, 0);
+  const totalMaintenance = maintenanceRecords.reduce((s, e) => s + (e.cost || 0), 0);
+  const totalAll = totalFuel + totalExpenses + totalMaintenance;
+
+  // Průměrná spotřeba
+  let avgConsumption: number | null = null;
+  if (fuelEntries.length >= 2) {
+    const consumptions: number[] = [];
+    const byVehicle = new Map<string, typeof fuelEntries>();
+    for (const e of fuelEntries) {
+      const arr = byVehicle.get(e.vehicleId) || [];
+      arr.push(e);
+      byVehicle.set(e.vehicleId, arr);
+    }
+    byVehicle.forEach((entries) => {
+      for (let i = 1; i < entries.length; i++) {
+        const c = calculateConsumption(entries[i].quantity, entries[i - 1].odometer, entries[i].odometer);
+        if (c !== null && c > 0 && c < 50) consumptions.push(c);
+      }
+    });
+    if (consumptions.length > 0) {
+      avgConsumption = consumptions.reduce((a, b) => a + b, 0) / consumptions.length;
+    }
+  }
+
+  // Náklady na km
+  const maxOdometer = fuelEntries.length > 0
+    ? Math.max(...fuelEntries.map((e) => e.odometer))
+    : 0;
+  const minOdometer = fuelEntries.length > 0
+    ? Math.min(...fuelEntries.map((e) => e.odometer))
+    : 0;
+  const totalKm = maxOdometer - minOdometer;
+  const costPerKm = totalKm > 0 ? totalAll / totalKm : null;
+
+  // Data pro koláčový graf
+  const categoryData = [
+    { name: "Palivo", value: Math.round(totalFuel) },
+    ...Object.entries(
+      expenseEntries.reduce<Record<string, number>>((acc, e) => {
+        const label = expenseCategoryLabels[e.category] || e.category;
+        acc[label] = (acc[label] || 0) + e.cost;
+        return acc;
+      }, {})
+    ).map(([name, value]) => ({ name, value: Math.round(value) })),
+    { name: "Údržba", value: Math.round(totalMaintenance) },
+  ].filter((d) => d.value > 0);
+
+  // Data pro měsíční graf
+  const monthlyMap = new Map<string, { fuel: number; expenses: number; maintenance: number }>();
+  const toMonth = (d: Date) => {
+    const date = new Date(d);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  };
+  fuelEntries.forEach((e) => {
+    const m = toMonth(e.date);
+    const cur = monthlyMap.get(m) || { fuel: 0, expenses: 0, maintenance: 0 };
+    cur.fuel += e.totalCost;
+    monthlyMap.set(m, cur);
+  });
+  expenseEntries.forEach((e) => {
+    const m = toMonth(e.date);
+    const cur = monthlyMap.get(m) || { fuel: 0, expenses: 0, maintenance: 0 };
+    cur.expenses += e.cost;
+    monthlyMap.set(m, cur);
+  });
+  maintenanceRecords.forEach((e) => {
+    const m = toMonth(e.date);
+    const cur = monthlyMap.get(m) || { fuel: 0, expenses: 0, maintenance: 0 };
+    cur.maintenance += e.cost || 0;
+    monthlyMap.set(m, cur);
+  });
+  const monthlyData = Array.from(monthlyMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, data]) => ({
+      month,
+      fuel: Math.round(data.fuel),
+      expenses: Math.round(data.expenses),
+      maintenance: Math.round(data.maintenance),
+    }));
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        {vehicles.length > 0 && (
+          <VehicleSelector vehicles={vehicles.map((v) => ({ id: v.id, name: v.name }))} />
+        )}
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {vehicles.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <p className="text-gray-500 mb-2">Vítejte v TankRide, {session.user.name}!</p>
+          <p className="text-gray-400">
+            Začněte přidáním svého prvního{" "}
+            <a href="/vehicles/new" className="text-emerald-600 hover:underline">vozidla</a>.
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      ) : (
+        <>
+          {/* Statistické karty */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <p className="text-sm text-gray-500 mb-1">Celkové náklady</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalAll, currency)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <p className="text-sm text-gray-500 mb-1">Palivo celkem</p>
+              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalFuel, currency)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <p className="text-sm text-gray-500 mb-1">Průměrná spotřeba</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {avgConsumption ? `${avgConsumption.toFixed(1)} l/100km` : "—"}
+              </p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <p className="text-sm text-gray-500 mb-1">Náklady na km</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {costPerKm ? `${costPerKm.toFixed(2)} ${currency}/km` : "—"}
+              </p>
+            </div>
+          </div>
+
+          {/* Grafy */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4">Rozložení výdajů</h2>
+              <CategoryPieChart data={categoryData} />
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4">Měsíční náklady</h2>
+              <MonthlyCostChart data={monthlyData} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,0 +1,15 @@
+services:
+  tankride:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:/data/tankride.db
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+    volumes:
+      - tankride-data:/data
+    restart: unless-stopped
+
+volumes:
+  tankride-data:
