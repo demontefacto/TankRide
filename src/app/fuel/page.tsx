@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDate, formatCurrency, calculateConsumption, formatConsumption } from "@/lib/utils";
+import { formatDate, formatCurrency, calculateConsumptionSmart, formatConsumption } from "@/lib/utils";
 import FuelDeleteButton from "@/components/FuelDeleteButton";
 import ConsumptionChart from "@/components/ConsumptionChart";
 
@@ -13,27 +13,24 @@ export default async function FuelPage() {
 
   const entries = await prisma.fuelEntry.findMany({
     where: { vehicle: { userId: session.user.id } },
-    include: { vehicle: { select: { name: true, fuelType: true } } },
+    include: { vehicle: { select: { name: true, fuelType: true, tankCapacity: true } } },
     orderBy: { date: "desc" },
   });
 
-  // Výpočet spotřeby pro každý záznam
-  const entriesWithConsumption = entries.map((entry) => {
-    const olderEntries = entries
-      .filter(
-        (e) =>
-          e.vehicleId === entry.vehicleId &&
-          new Date(e.date) < new Date(entry.date)
-      )
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Výpočet spotřeby – seskupit podle vozidla a použít smart výpočet
+  const consumptionMap = new Map<string, number | null>();
+  const vehicleIds = Array.from(new Set(entries.map((e) => e.vehicleId)));
+  for (const vid of vehicleIds) {
+    const vehicleEntries = entries.filter((e) => e.vehicleId === vid);
+    const tankCapacity = vehicleEntries[0]?.vehicle.tankCapacity ?? null;
+    const smartMap = calculateConsumptionSmart(vehicleEntries, tankCapacity);
+    smartMap.forEach((val, key) => consumptionMap.set(key, val));
+  }
 
-    const prevEntry = olderEntries[0];
-    const consumption = prevEntry
-      ? calculateConsumption(entry.quantity, prevEntry.odometer, entry.odometer)
-      : null;
-
-    return { ...entry, consumption };
-  });
+  const entriesWithConsumption = entries.map((entry) => ({
+    ...entry,
+    consumption: consumptionMap.get(entry.id) ?? null,
+  }));
 
   // Data pro graf - setřídit chronologicky
   const chartData = entriesWithConsumption
@@ -77,6 +74,7 @@ export default async function FuelPage() {
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Vozidlo</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-600">km</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-600">Množství</th>
+                <th className="px-4 py-3 text-center font-medium text-gray-600">Nádrž</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-600">Cena</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-600">Spotřeba</th>
                 <th className="px-4 py-3"></th>
@@ -90,6 +88,15 @@ export default async function FuelPage() {
                   <td className="px-4 py-3 text-right">{entry.odometer.toLocaleString("cs-CZ")}</td>
                   <td className="px-4 py-3 text-right">
                     {entry.quantity.toFixed(1)} {entry.vehicle.fuelType === "ELECTRIC" ? "kWh" : "l"}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {entry.fullTank ? (
+                      <span className="text-emerald-600 text-xs">● plná</span>
+                    ) : (
+                      <span className="text-amber-600 text-xs">
+                        {entry.fuelLevelPct != null ? `${entry.fuelLevelPct} %` : "část."}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {formatCurrency(entry.totalCost, session.user.currency)}

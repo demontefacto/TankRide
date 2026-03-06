@@ -47,6 +47,8 @@ export async function POST(request: Request) {
       date: new Date(data.date),
       odometer: parseInt(data.odometer),
       quantity: parseFloat(data.quantity),
+      fullTank: data.fullTank !== false,
+      fuelLevelPct: data.fuelLevelPct != null ? parseInt(data.fuelLevelPct) : null,
       pricePerUnit: parseFloat(data.pricePerUnit),
       totalCost: parseFloat(data.totalCost),
       note: data.note || null,

@@ -27,6 +27,7 @@ model Vehicle {
   year            Int?
   licensePlate    String?
   fuelType        String              // GASOLINE, DIESEL, LPG, CNG, ELECTRIC, HYBRID
+  tankCapacity    Float?              // velikost nádrže v litrech (nebo kWh u elektro)
   initialOdometer Int                 @default(0)
   createdAt       DateTime            @default(now())
   user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -42,10 +43,12 @@ model FuelEntry {
   vehicleId    String
   date         DateTime
   odometer     Int
-  quantity     Float    // litry nebo kWh
-  pricePerUnit Float
-  totalCost    Float
-  stationId    String?
+  quantity       Float    // litry nebo kWh
+  fullTank       Boolean  @default(true)  // tankováno do plna?
+  fuelLevelPct   Int?     // přibližný stav nádrže po tankování v % (pro částečné tankování)
+  pricePerUnit   Float
+  totalCost      Float
+  stationId      String?
   note         String?
   createdAt    DateTime @default(now())
   vehicle      Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)

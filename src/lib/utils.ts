@@ -11,10 +11,9 @@ export function formatCurrency(amount: number, currency: string = "CZK"): string
 }
 
 /**
- * Výpočet spotřeby mezi dvěma tankováními
- * Vrací l/100km nebo kWh/100km
+ * Jednoduchý výpočet spotřeby (záložní)
  */
-export function calculateConsumption(
+export function calculateConsumptionSimple(
   quantity: number,
   odometerStart: number,
   odometerEnd: number
@@ -22,6 +21,97 @@ export function calculateConsumption(
   const distance = odometerEnd - odometerStart;
   if (distance <= 0) return null;
   return (quantity / distance) * 100;
+}
+
+interface FuelEntryForCalc {
+  id: string;
+  vehicleId: string;
+  date: Date;
+  odometer: number;
+  quantity: number;
+  fullTank: boolean;
+  fuelLevelPct: number | null;
+}
+
+/**
+ * Inteligentní výpočet spotřeby pro seřazený seznam záznamů jednoho vozidla.
+ *
+ * Metoda "od plné po plnou":
+ * - Pokud aktuální i předchozí referentní tankování je do plna,
+ *   sečte litry všech tankování od posledního plného a vydělí vzdáleností.
+ *
+ * S odhadem přes % nádrže:
+ * - Pokud známe velikost nádrže a % po tankování u obou záznamů,
+ *   spotřeba = (palivo_po_A - palivo_po_B + natankované_B) / vzdálenost * 100
+ */
+export function calculateConsumptionSmart(
+  entries: FuelEntryForCalc[],
+  tankCapacity: number | null
+): Map<string, number | null> {
+  const result = new Map<string, number | null>();
+
+  // Setřídit chronologicky
+  const sorted = [...entries].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  for (let i = 0; i < sorted.length; i++) {
+    const current = sorted[i];
+
+    if (i === 0) {
+      result.set(current.id, null);
+      continue;
+    }
+
+    // Metoda 1: Od plné po plnou
+    if (current.fullTank) {
+      // Najdi poslední plné tankování před tímto
+      let refIndex = -1;
+      for (let j = i - 1; j >= 0; j--) {
+        if (sorted[j].fullTank) {
+          refIndex = j;
+          break;
+        }
+      }
+
+      if (refIndex >= 0) {
+        // Sečte litry všech tankování MEZI ref a current (včetně current, bez ref)
+        let totalQuantity = 0;
+        for (let j = refIndex + 1; j <= i; j++) {
+          totalQuantity += sorted[j].quantity;
+        }
+        const distance = current.odometer - sorted[refIndex].odometer;
+        if (distance > 0) {
+          result.set(current.id, (totalQuantity / distance) * 100);
+          continue;
+        }
+      }
+    }
+
+    // Metoda 2: Odhad přes % nádrže
+    const prev = sorted[i - 1];
+    if (
+      tankCapacity &&
+      tankCapacity > 0 &&
+      current.fuelLevelPct !== null &&
+      prev.fuelLevelPct !== null
+    ) {
+      const fuelAfterPrev = (tankCapacity * prev.fuelLevelPct) / 100;
+      const fuelAfterCurrent = (tankCapacity * current.fuelLevelPct) / 100;
+      const consumed = fuelAfterPrev - fuelAfterCurrent + current.quantity;
+      const distance = current.odometer - prev.odometer;
+      if (distance > 0 && consumed > 0) {
+        result.set(current.id, (consumed / distance) * 100);
+        continue;
+      }
+    }
+
+    // Metoda 3: Záložní – pouze pokud oba záznamy jsou plné (již pokryto výše)
+    // nebo jednoduchý výpočet pokud je aktuální plné a předchozí je hned předtím
+    result.set(current.id, null);
+  }
+
+  return result;
 }
 
 /**

@@ -13,6 +13,7 @@ interface VehicleFormProps {
     year: number | null;
     licensePlate: string | null;
     fuelType: string;
+    tankCapacity: number | null;
     initialOdometer: number;
   };
 }
@@ -36,6 +37,7 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
       year: formData.get("year"),
       licensePlate: formData.get("licensePlate"),
       fuelType: formData.get("fuelType"),
+      tankCapacity: formData.get("tankCapacity"),
       initialOdometer: formData.get("initialOdometer"),
     };
 
@@ -137,10 +139,11 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
         </div>
       </div>
 
-      <div>
-        <label htmlFor="fuelType" className="block text-sm font-medium text-gray-700 mb-1">
-          Typ paliva *
-        </label>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="fuelType" className="block text-sm font-medium text-gray-700 mb-1">
+            Typ paliva *
+          </label>
         <select
           id="fuelType"
           name="fuelType"
@@ -154,6 +157,22 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
             </option>
           ))}
         </select>
+        </div>
+        <div>
+          <label htmlFor="tankCapacity" className="block text-sm font-medium text-gray-700 mb-1">
+            Objem nádrže (l / kWh)
+          </label>
+          <input
+            id="tankCapacity"
+            name="tankCapacity"
+            type="number"
+            step="0.1"
+            min="0"
+            defaultValue={vehicle?.tankCapacity ?? ""}
+            placeholder="např. 50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
       </div>
 
       <div>

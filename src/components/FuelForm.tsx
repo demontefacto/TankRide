@@ -7,6 +7,7 @@ interface Vehicle {
   id: string;
   name: string;
   fuelType: string;
+  tankCapacity: number | null;
 }
 
 export default function FuelForm({ vehicles }: { vehicles: Vehicle[] }) {
@@ -16,6 +17,8 @@ export default function FuelForm({ vehicles }: { vehicles: Vehicle[] }) {
   const [quantity, setQuantity] = useState("");
   const [pricePerUnit, setPricePerUnit] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState(vehicles[0]?.id || "");
+  const [fullTank, setFullTank] = useState(true);
+  const [fuelLevelPct, setFuelLevelPct] = useState(100);
 
   const totalCost =
     quantity && pricePerUnit
@@ -26,6 +29,7 @@ export default function FuelForm({ vehicles }: { vehicles: Vehicle[] }) {
   const isElectric = currentVehicle?.fuelType === "ELECTRIC";
   const unitLabel = isElectric ? "kWh" : "litrů";
   const priceLabel = isElectric ? "Cena za kWh" : "Cena za litr";
+  const hasTankCapacity = !!currentVehicle?.tankCapacity;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,6 +48,8 @@ export default function FuelForm({ vehicles }: { vehicles: Vehicle[] }) {
         quantity: formData.get("quantity"),
         pricePerUnit: formData.get("pricePerUnit"),
         totalCost: totalCost,
+        fullTank,
+        fuelLevelPct: fullTank ? 100 : fuelLevelPct,
         note: formData.get("note"),
       }),
     });
@@ -166,6 +172,51 @@ export default function FuelForm({ vehicles }: { vehicles: Vehicle[] }) {
           <span className="text-sm text-gray-600">Celková cena: </span>
           <span className="font-semibold">{parseFloat(totalCost).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })}</span>
         </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <input
+          id="fullTank"
+          type="checkbox"
+          checked={fullTank}
+          onChange={(e) => {
+            setFullTank(e.target.checked);
+            if (e.target.checked) setFuelLevelPct(100);
+          }}
+          className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+        />
+        <label htmlFor="fullTank" className="text-sm font-medium text-gray-700">
+          Tankováno do plna
+        </label>
+      </div>
+
+      {!fullTank && hasTankCapacity && (
+        <div>
+          <label htmlFor="fuelLevelPct" className="block text-sm font-medium text-gray-700 mb-1">
+            Stav nádrže po tankování: {fuelLevelPct} %
+          </label>
+          <input
+            id="fuelLevelPct"
+            type="range"
+            min="5"
+            max="95"
+            step="5"
+            value={fuelLevelPct}
+            onChange={(e) => setFuelLevelPct(parseInt(e.target.value))}
+            className="w-full accent-emerald-600"
+          />
+          <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <span>5 %</span>
+            <span>50 %</span>
+            <span>95 %</span>
+          </div>
+        </div>
+      )}
+
+      {!fullTank && !hasTankCapacity && (
+        <p className="text-xs text-amber-600">
+          Tip: Zadejte objem nádrže u vozidla, aby se dala lépe odhadnout spotřeba u částečného tankování.
+        </p>
       )}
 
       <div>

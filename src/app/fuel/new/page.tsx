@@ -10,7 +10,7 @@ export default async function NewFuelEntryPage() {
 
   const vehicles = await prisma.vehicle.findMany({
     where: { userId: session.user.id },
-    select: { id: true, name: true, fuelType: true },
+    select: { id: true, name: true, fuelType: true, tankCapacity: true },
     orderBy: { name: "asc" },
   });
 

@@ -50,6 +50,7 @@ export async function PUT(
       year: data.year ? parseInt(data.year) : null,
       licensePlate: data.licensePlate || null,
       fuelType: data.fuelType,
+      tankCapacity: data.tankCapacity ? parseFloat(data.tankCapacity) : null,
       initialOdometer: data.initialOdometer ? parseInt(data.initialOdometer) : 0,
     },
   });

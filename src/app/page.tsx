@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatCurrency, calculateConsumption, expenseCategoryLabels } from "@/lib/utils";
+import { formatCurrency, calculateConsumptionSmart, expenseCategoryLabels } from "@/lib/utils";
 import { CategoryPieChart, MonthlyCostChart } from "@/components/DashboardCharts";
 import VehicleSelector from "@/components/VehicleSelector";
 
@@ -28,7 +28,7 @@ export default async function DashboardPage({
     prisma.vehicle.findMany({ where: { userId } }),
     prisma.fuelEntry.findMany({
       where: vehicleFilter,
-      include: { vehicle: { select: { fuelType: true } } },
+      include: { vehicle: { select: { fuelType: true, tankCapacity: true } } },
       orderBy: { date: "asc" },
     }),
     prisma.expenseEntry.findMany({ where: vehicleFilter }),
@@ -41,7 +41,7 @@ export default async function DashboardPage({
   const totalMaintenance = maintenanceRecords.reduce((s, e) => s + (e.cost || 0), 0);
   const totalAll = totalFuel + totalExpenses + totalMaintenance;
 
-  // Průměrná spotřeba
+  // Průměrná spotřeba (smart výpočet)
   let avgConsumption: number | null = null;
   if (fuelEntries.length >= 2) {
     const consumptions: number[] = [];
@@ -52,10 +52,22 @@ export default async function DashboardPage({
       byVehicle.set(e.vehicleId, arr);
     }
     byVehicle.forEach((entries) => {
-      for (let i = 1; i < entries.length; i++) {
-        const c = calculateConsumption(entries[i].quantity, entries[i - 1].odometer, entries[i].odometer);
+      const tankCapacity = entries[0]?.vehicle?.tankCapacity ?? null;
+      const smartResults = calculateConsumptionSmart(
+        entries.map((e) => ({
+          id: e.id,
+          vehicleId: e.vehicleId,
+          date: e.date,
+          odometer: e.odometer,
+          quantity: e.quantity,
+          fullTank: e.fullTank,
+          fuelLevelPct: e.fuelLevelPct,
+        })),
+        tankCapacity
+      );
+      smartResults.forEach((c) => {
         if (c !== null && c > 0 && c < 50) consumptions.push(c);
-      }
+      });
     });
     if (consumptions.length > 0) {
       avgConsumption = consumptions.reduce((a, b) => a + b, 0) / consumptions.length;

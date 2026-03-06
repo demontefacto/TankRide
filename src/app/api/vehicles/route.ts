@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       year: year ? parseInt(year) : null,
       licensePlate: licensePlate || null,
       fuelType,
+      tankCapacity: data.tankCapacity ? parseFloat(data.tankCapacity) : null,
       initialOdometer: initialOdometer ? parseInt(initialOdometer) : 0,
     },
   });
