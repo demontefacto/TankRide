@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatDate, formatCurrency, maintenanceTypeLabels } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 import DeleteButton from "@/components/DeleteButton";
 
 export default async function MaintenancePage() {
@@ -12,14 +12,22 @@ export default async function MaintenancePage() {
 
   const entries = await prisma.maintenanceRecord.findMany({
     where: { vehicle: { userId: session.user.id } },
-    include: { vehicle: { select: { name: true } } },
+    include: {
+      vehicle: { select: { name: true } },
+      maintenanceType: { select: { name: true } },
+    },
     orderBy: { date: "desc" },
   });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Údržba</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold text-gray-900">Údržba</h1>
+          <Link href="/maintenance/types" className="text-sm text-emerald-600 hover:underline">
+            Správa typů
+          </Link>
+        </div>
         <Link href="/maintenance/new" className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors">
           + Přidat záznam
         </Link>
@@ -50,7 +58,7 @@ export default async function MaintenancePage() {
                   <td className="px-4 py-3">{entry.vehicle.name}</td>
                   <td className="px-4 py-3">
                     <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">
-                      {maintenanceTypeLabels[entry.type] || entry.type}
+                      {entry.maintenanceType.name}
                     </span>
                   </td>
                   <td className="px-4 py-3">{entry.description || "—"}</td>

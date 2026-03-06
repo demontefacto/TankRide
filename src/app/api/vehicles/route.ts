@@ -33,19 +33,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const vehicle = await prisma.vehicle.create({
-    data: {
-      userId: session.user.id,
-      name,
-      make,
-      model,
-      year: year ? parseInt(year) : null,
-      licensePlate: licensePlate || null,
-      fuelType,
-      tankCapacity: data.tankCapacity ? parseFloat(data.tankCapacity) : null,
-      initialOdometer: initialOdometer ? parseInt(initialOdometer) : 0,
-    },
-  });
+  try {
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        userId: session.user.id,
+        name,
+        make,
+        model,
+        year: year ? parseInt(year) : null,
+        licensePlate: licensePlate || null,
+        fuelType,
+        tankCapacity: data.tankCapacity ? parseFloat(data.tankCapacity) : null,
+        initialOdometer: initialOdometer ? parseInt(initialOdometer) : 0,
+      },
+    });
 
-  return NextResponse.json(vehicle, { status: 201 });
+    return NextResponse.json(vehicle, { status: 201 });
+  } catch (error) {
+    console.error("Vehicle create error:", error);
+    return NextResponse.json({ error: "Chyba při ukládání vozidla" }, { status: 500 });
+  }
 }

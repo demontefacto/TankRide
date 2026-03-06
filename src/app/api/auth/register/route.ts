@@ -36,13 +36,25 @@ export async function POST(request: Request) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         email,
         name,
         passwordHash,
         currency: userCurrency,
       },
+    });
+
+    // Výchozí typy údržby
+    await prisma.maintenanceType.createMany({
+      data: [
+        { userId: user.id, name: "Výměna oleje", intervalKm: 15000, intervalMonths: 12, isDefault: true },
+        { userId: user.id, name: "STK", intervalMonths: 24, isDefault: true },
+        { userId: user.id, name: "Emise", intervalMonths: 24, isDefault: true },
+        { userId: user.id, name: "Výměna pneumatik", intervalMonths: 6, isDefault: true },
+        { userId: user.id, name: "Brzdy", isDefault: true },
+        { userId: user.id, name: "Ostatní", isDefault: true },
+      ],
     });
 
     return NextResponse.json({ message: "Registrace úspěšná" }, { status: 201 });

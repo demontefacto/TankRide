@@ -37,8 +37,8 @@ export async function POST(request: Request) {
   const entry = await prisma.maintenanceRecord.create({
     data: {
       vehicleId: data.vehicleId,
+      maintenanceTypeId: data.maintenanceTypeId,
       date: new Date(data.date),
-      type: data.type,
       description: data.description || null,
       odometer: data.odometer ? parseInt(data.odometer) : null,
       cost: data.cost ? parseFloat(data.cost) : null,

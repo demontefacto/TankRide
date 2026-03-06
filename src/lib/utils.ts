@@ -152,23 +152,12 @@ export const fuelTypeLabels: Record<string, string> = {
  * Label pro kategorii výdajů
  */
 export const expenseCategoryLabels: Record<string, string> = {
-  SERVICE: "Servis",
+  SERVICE: "Servisní prohlídka",
   SPARE_PARTS: "Náhradní díly",
   INSURANCE: "Povinné ručení",
   OTHER: "Ostatní",
 };
 
-/**
- * Label pro typ údržby
- */
-export const maintenanceTypeLabels: Record<string, string> = {
-  OIL_CHANGE: "Výměna oleje",
-  STK: "STK",
-  EMISSION_TEST: "Emise",
-  TIRE_CHANGE: "Výměna pneumatik",
-  BRAKE_CHECK: "Brzdy",
-  OTHER: "Ostatní",
-};
 
 /**
  * Dostupné měny

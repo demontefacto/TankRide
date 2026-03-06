@@ -51,8 +51,12 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
     });
 
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Chyba při ukládání");
+      try {
+        const data = await res.json();
+        setError(data.error || "Chyba při ukládání");
+      } catch {
+        setError(`Chyba serveru (${res.status})`);
+      }
       setLoading(false);
       return;
     }
