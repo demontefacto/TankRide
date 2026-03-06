@@ -9,14 +9,15 @@ import VehicleSelector from "@/components/VehicleSelector";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { vehicleId?: string };
+  searchParams: Promise<{ vehicleId?: string }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
+  const { vehicleId: vehicleIdParam } = await searchParams;
   const userId = session.user.id;
   const currency = session.user.currency;
-  const vehicleId = searchParams.vehicleId || null;
+  const vehicleId = vehicleIdParam || null;
 
   // Filtr podle vozidla
   const vehicleFilter = vehicleId

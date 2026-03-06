@@ -5,15 +5,17 @@ import { prisma } from "@/lib/prisma";
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Nepřihlášen" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   const existing = await prisma.maintenanceType.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id, userId: session.user.id },
   });
 
   if (!existing) {
@@ -27,7 +29,7 @@ export async function PUT(
   }
 
   const updated = await prisma.maintenanceType.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       name: data.name.trim(),
       intervalKm: data.intervalKm !== undefined ? (data.intervalKm ? parseInt(data.intervalKm) : null) : existing.intervalKm,
@@ -40,15 +42,17 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Nepřihlášen" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   const existing = await prisma.maintenanceType.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id, userId: session.user.id },
     include: { _count: { select: { records: true } } },
   });
 
@@ -63,6 +67,6 @@ export async function DELETE(
     );
   }
 
-  await prisma.maintenanceType.delete({ where: { id: params.id } });
+  await prisma.maintenanceType.delete({ where: { id } });
   return NextResponse.json({ message: "Typ smazán" });
 }

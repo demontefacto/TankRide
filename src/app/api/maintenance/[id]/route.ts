@@ -5,21 +5,23 @@ import { prisma } from "@/lib/prisma";
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Nepřihlášen" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   const entry = await prisma.maintenanceRecord.findFirst({
-    where: { id: params.id, vehicle: { userId: session.user.id } },
+    where: { id, vehicle: { userId: session.user.id } },
   });
 
   if (!entry) {
     return NextResponse.json({ error: "Záznam nenalezen" }, { status: 404 });
   }
 
-  await prisma.maintenanceRecord.delete({ where: { id: params.id } });
+  await prisma.maintenanceRecord.delete({ where: { id } });
   return NextResponse.json({ message: "Záznam smazán" });
 }

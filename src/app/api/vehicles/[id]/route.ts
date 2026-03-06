@@ -11,14 +11,16 @@ async function getVehicleForUser(id: string, userId: string) {
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Nepřihlášen" }, { status: 401 });
   }
 
-  const vehicle = await getVehicleForUser(params.id, session.user.id);
+  const { id } = await params;
+
+  const vehicle = await getVehicleForUser(id, session.user.id);
   if (!vehicle) {
     return NextResponse.json({ error: "Vozidlo nenalezeno" }, { status: 404 });
   }
@@ -28,21 +30,23 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Nepřihlášen" }, { status: 401 });
   }
 
-  const vehicle = await getVehicleForUser(params.id, session.user.id);
+  const { id } = await params;
+
+  const vehicle = await getVehicleForUser(id, session.user.id);
   if (!vehicle) {
     return NextResponse.json({ error: "Vozidlo nenalezeno" }, { status: 404 });
   }
 
   const data = await request.json();
   const updated = await prisma.vehicle.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       name: data.name,
       make: data.make,
@@ -60,19 +64,21 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Nepřihlášen" }, { status: 401 });
   }
 
-  const vehicle = await getVehicleForUser(params.id, session.user.id);
+  const { id } = await params;
+
+  const vehicle = await getVehicleForUser(id, session.user.id);
   if (!vehicle) {
     return NextResponse.json({ error: "Vozidlo nenalezeno" }, { status: 404 });
   }
 
-  await prisma.vehicle.delete({ where: { id: params.id } });
+  await prisma.vehicle.delete({ where: { id } });
 
   return NextResponse.json({ message: "Vozidlo smazáno" });
 }

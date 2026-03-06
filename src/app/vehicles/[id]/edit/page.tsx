@@ -7,13 +7,15 @@ import VehicleForm from "@/components/VehicleForm";
 export default async function EditVehiclePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
+  const { id } = await params;
+
   const vehicle = await prisma.vehicle.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id, userId: session.user.id },
   });
 
   if (!vehicle) notFound();
