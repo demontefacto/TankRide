@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface Vehicle {
   id: string;
@@ -125,7 +126,7 @@ export default function MaintenanceForm({
     return (
       <p className="text-gray-500">
         Nejprve přidejte vozidlo v sekci{" "}
-        <a href="/vehicles/new" className="text-emerald-600 hover:underline">Vozidla</a>.
+        <Link href="/vehicles/new" className="text-emerald-600 hover:underline">Vozidla</Link>.
       </p>
     );
   }

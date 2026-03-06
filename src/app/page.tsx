@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, calculateConsumptionSmart, expenseCategoryLabels } from "@/lib/utils";
@@ -145,7 +146,7 @@ export default async function DashboardPage({
           <p className="text-gray-500 mb-2">Vítejte v TankRide, {session.user.name}!</p>
           <p className="text-gray-400">
             Začněte přidáním svého prvního{" "}
-            <a href="/vehicles/new" className="text-emerald-600 hover:underline">vozidla</a>.
+            <Link href="/vehicles/new" className="text-emerald-600 hover:underline">vozidla</Link>.
           </p>
         </div>
       ) : (
