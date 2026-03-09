@@ -39,6 +39,7 @@ export default async function ExpensesPage() {
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Kategorie</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Popis</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-600">Částka</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">Platnost do</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -55,6 +56,20 @@ export default async function ExpensesPage() {
                   <td className="px-4 py-3">{entry.description}</td>
                   <td className="px-4 py-3 text-right font-medium">
                     {formatCurrency(entry.cost, session.user.currency)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {entry.expiresAt ? (
+                      <span className={
+                        new Date(entry.expiresAt) < new Date()
+                          ? "text-red-600 font-medium"
+                          : new Date(entry.expiresAt).getTime() - Date.now() < 30 * 24 * 60 * 60 * 1000
+                            ? "text-amber-600 font-medium"
+                            : ""
+                      }>
+                        {formatDate(entry.expiresAt)}
+                        {entry.country ? ` (${entry.country})` : ""}
+                      </span>
+                    ) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <DeleteButton apiPath={`/api/expenses/${entry.id}`} />

@@ -48,6 +48,8 @@ export async function POST(request: Request) {
       description: data.description,
       cost: parseFloat(data.cost),
       odometer: data.odometer ? parseInt(data.odometer) : null,
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      country: data.country || null,
       note: data.note || null,
     },
   });

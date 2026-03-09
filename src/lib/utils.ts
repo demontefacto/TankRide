@@ -154,7 +154,8 @@ export const fuelTypeLabels: Record<string, string> = {
 export const expenseCategoryLabels: Record<string, string> = {
   SERVICE: "Servisní prohlídka",
   SPARE_PARTS: "Náhradní díly",
-  INSURANCE: "Povinné ručení",
+  INSURANCE: "Pojištění",
+  VIGNETTE: "Dálniční známka",
   OTHER: "Ostatní",
 };
 

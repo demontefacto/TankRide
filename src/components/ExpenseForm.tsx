@@ -7,10 +7,15 @@ import { expenseCategoryLabels } from "@/lib/utils";
 
 interface Vehicle { id: string; name: string; }
 
+const CATEGORIES_WITH_EXPIRY = ["INSURANCE", "VIGNETTE"];
+
 export default function ExpenseForm({ vehicles }: { vehicles: Vehicle[] }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [category, setCategory] = useState("SERVICE");
+
+  const showExpiry = CATEGORIES_WITH_EXPIRY.includes(category);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -25,17 +30,23 @@ export default function ExpenseForm({ vehicles }: { vehicles: Vehicle[] }) {
       body: JSON.stringify({
         vehicleId: formData.get("vehicleId"),
         date: formData.get("date"),
-        category: formData.get("category"),
+        category,
         description: formData.get("description"),
         cost: formData.get("cost"),
         odometer: formData.get("odometer") || null,
+        expiresAt: formData.get("expiresAt") || null,
+        country: formData.get("country") || null,
         note: formData.get("note"),
       }),
     });
 
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Chyba při ukládání");
+      try {
+        const data = await res.json();
+        setError(data.error || "Chyba při ukládání");
+      } catch {
+        setError(`Chyba serveru (${res.status})`);
+      }
       setLoading(false);
       return;
     }
@@ -71,7 +82,12 @@ export default function ExpenseForm({ vehicles }: { vehicles: Vehicle[] }) {
         </div>
         <div>
           <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Kategorie *</label>
-          <select id="category" name="category" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <select
+            id="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
             {Object.entries(expenseCategoryLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
@@ -94,6 +110,20 @@ export default function ExpenseForm({ vehicles }: { vehicles: Vehicle[] }) {
           <input id="odometer" name="odometer" type="number" min="0" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
         </div>
       </div>
+
+      {/* Expirace + stát – zobrazí se pro pojištění a dálniční známky */}
+      {showExpiry && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="expiresAt" className="block text-sm font-medium text-gray-700 mb-1">Platnost do</label>
+            <input id="expiresAt" name="expiresAt" type="date" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">Stát</label>
+            <input id="country" name="country" placeholder="např. CZ, AT, SK" maxLength={5} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+        </div>
+      )}
 
       <div>
         <label htmlFor="note" className="block text-sm font-medium text-gray-700 mb-1">Poznámka</label>

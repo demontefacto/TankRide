@@ -60,16 +60,18 @@ model FuelEntry {
 }
 
 model ExpenseEntry {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   vehicleId   String
   date        DateTime
-  category    String   // SERVICE, SPARE_PARTS, INSURANCE, OTHER
+  category    String    // SERVICE, SPARE_PARTS, INSURANCE, VIGNETTE, OTHER
   description String
   cost        Float
   odometer    Int?
+  expiresAt   DateTime? // datum expirace (pojišťovka, dálniční známka...)
+  country     String?   // stát (CZ, AT, SK...) – volitelné, hlavně pro známky
   note        String?
-  createdAt   DateTime @default(now())
-  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
   @@index([date])
