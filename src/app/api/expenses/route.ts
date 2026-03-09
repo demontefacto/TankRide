@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       vehicleId: data.vehicleId,
       date: new Date(data.date),
       category: data.category,
-      description: data.description,
+      description: data.description || null,
       cost: parseFloat(data.cost),
       odometer: data.odometer ? parseInt(data.odometer) : null,
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,

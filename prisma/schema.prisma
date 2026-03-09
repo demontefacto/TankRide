@@ -64,7 +64,7 @@ model ExpenseEntry {
   vehicleId   String
   date        DateTime
   category    String    // SERVICE, SPARE_PARTS, INSURANCE, VIGNETTE, OTHER
-  description String
+  description String?
   cost        Float
   odometer    Int?
   expiresAt   DateTime? // datum expirace (pojišťovka, dálniční známka...)

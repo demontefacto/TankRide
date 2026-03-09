@@ -96,8 +96,8 @@ export default function ExpenseForm({ vehicles }: { vehicles: Vehicle[] }) {
       </div>
 
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Popis *</label>
-        <input id="description" name="description" required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Popis</label>
+        <input id="description" name="description" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
