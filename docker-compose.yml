@@ -9,9 +9,19 @@ services:
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3-flash-preview}
+      - SENTINEL_REPORT_URL=${SENTINEL_REPORT_URL:-http://agudesign_sentinel:8000/api/v1/report}
+      - SENTINEL_API_TOKEN=${SENTINEL_API_TOKEN:-agu_sentinel_secret_token_change_me}
     volumes:
       - tankride-data:/data
+    networks:
+      - default
+      - www_agudesign_net
     restart: unless-stopped
 
 volumes:
   tankride-data:
+
+networks:
+  default:
+  www_agudesign_net:
+    external: true
