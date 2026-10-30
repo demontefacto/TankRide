@@ -37,7 +37,7 @@ function isPrivateIp(ip: string): boolean {
 }
 
 // Asynchronní nahlášení incidentu do Sentinel Hubu
-async function reportToSentinel(ip: string, reason: string, path: string, userAgent: string) {
+async function reportToSentinel(ip: string, reason: string, path: string, userAgent: string, logSnippet: string = '') {
   const sentinelUrl = process.env.SENTINEL_REPORT_URL || 'http://agudesign_sentinel:8000/api/v1/report';
   const sentinelToken = process.env.SENTINEL_API_TOKEN || 'agu_sentinel_secret_token_change_me';
 
@@ -57,6 +57,7 @@ async function reportToSentinel(ip: string, reason: string, path: string, userAg
         reason,
         path,
         user_agent: userAgent,
+        log_snippet: logSnippet,
       }),
       signal: controller.signal,
     });
@@ -105,8 +106,10 @@ export async function middleware(request: NextRequest) {
 
     // Nahlásit Sentinelu, pokud se nejedná o lokální IP
     if (!isPrivateIp(clientIp) && clientIp !== 'unknown') {
+      const referer = request.headers.get('referer') || '';
+      const logSnippet = `${request.method} ${pathname}${search ? '?' + search : ''}\nUser-Agent: ${userAgent}\nReferer: ${referer}`;
       // Fire-and-forget hlášení na pozadí
-      reportToSentinel(clientIp, matchedReason, pathname, userAgent).catch(() => {});
+      reportToSentinel(clientIp, matchedReason, pathname, userAgent, logSnippet).catch(() => {});
     }
 
     return new NextResponse('403 Forbidden • AGU Design Perimeter Shield', {
