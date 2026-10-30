@@ -65,9 +65,10 @@ async function reportToSentinel(ip: string, reason: string, path: string, userAg
     if (!res.ok) {
       console.warn(`[TankRide Shield] Sentinel vrátil stav ${res.status} pro IP ${ip}`);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Graceful fallback: Pokud Sentinel zrovna neběží, Tankride nesmí spadnout
-    console.warn(`[TankRide Shield] Nepodařilo se nahlásit incident Sentinelu (${err?.message || err})`);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.warn(`[TankRide Shield] Nepodařilo se nahlásit incident Sentinelu (${errorMsg})`);
   }
 }
 
