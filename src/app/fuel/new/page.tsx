@@ -14,10 +14,12 @@ export default async function NewFuelEntryPage() {
     orderBy: { name: "asc" },
   });
 
+  const aiScanEnabled = Boolean(process.env.GEMINI_API_KEY);
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Nový záznam tankování</h1>
-      <FuelForm vehicles={vehicles} />
+      <FuelForm vehicles={vehicles} aiScanEnabled={aiScanEnabled} />
     </div>
   );
 }

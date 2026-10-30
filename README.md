@@ -7,6 +7,7 @@ A web application for tracking and analyzing vehicle operating costs. Manage mul
 - **Multi-user** — each user manages their own vehicles and data
 - **Multiple vehicles** with different fuel types (gasoline, diesel, LPG, CNG, electric, hybrid)
 - **Fuel / charging log** with automatic consumption calculation (l/100 km or kWh/100 km) and trend charts
+- **Optional AI Receipt & Dashboard Scanner** — snap a photo of your fuel receipt and/or dashboard odometer; Gemini Vision extracts liters, price, odometer, and station name automatically (100% optional, stays hidden if no key is set)
 - **Expense tracking** categorized as service, spare parts, insurance, or other
 - **Maintenance records** (vehicle inspection, emissions, oil change, tires, brakes, …) with optional next-due date/km reminders
 - **Dashboard** with summary stats (total costs, average consumption, cost per km) and interactive charts (category breakdown, monthly trends)
@@ -42,11 +43,15 @@ Open [http://localhost:3000](http://localhost:3000), register a new account and 
 
 ### Docker
 
-Create a `.env` file:
+Create a `.env` file (or copy from `.env.example`):
 
 ```env
 NEXTAUTH_SECRET=your-random-secret-here
 NEXTAUTH_URL=http://localhost:3000
+
+# Optional: Enable AI scanning of fuel receipts & dash clusters via Gemini API
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-3-flash-preview
 ```
 
 Then run:
