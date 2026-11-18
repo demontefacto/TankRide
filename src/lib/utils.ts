@@ -50,10 +50,11 @@ export function calculateConsumptionSmart(
 ): Map<string, number | null> {
   const result = new Map<string, number | null>();
 
-  // Setřídit chronologicky
-  const sorted = [...entries].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+  // Setřídit chronologicky (při stejném datu rozhoduje nájezd tachometru)
+  const sorted = [...entries].sort((a, b) => {
+    const timeDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+    return timeDiff !== 0 ? timeDiff : a.odometer - b.odometer;
+  });
 
   for (let i = 0; i < sorted.length; i++) {
     const current = sorted[i];

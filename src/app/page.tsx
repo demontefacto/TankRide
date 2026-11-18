@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -76,14 +77,21 @@ export default async function DashboardPage({
     }
   }
 
-  // Náklady na km
-  const maxOdometer = fuelEntries.length > 0
-    ? Math.max(...fuelEntries.map((e) => e.odometer))
-    : 0;
-  const minOdometer = fuelEntries.length > 0
-    ? Math.min(...fuelEntries.map((e) => e.odometer))
-    : 0;
-  const totalKm = maxOdometer - minOdometer;
+  // Náklady na km (počítáno za každé vozidlo zvlášť, aby se nemíchaly tachometry různých aut)
+  const odoByVehicle = new Map<string, { min: number; max: number }>();
+  for (const e of fuelEntries) {
+    const cur = odoByVehicle.get(e.vehicleId);
+    if (!cur) {
+      odoByVehicle.set(e.vehicleId, { min: e.odometer, max: e.odometer });
+    } else {
+      if (e.odometer < cur.min) cur.min = e.odometer;
+      if (e.odometer > cur.max) cur.max = e.odometer;
+    }
+  }
+  let totalKm = 0;
+  odoByVehicle.forEach((range) => {
+    totalKm += Math.max(0, range.max - range.min);
+  });
   const costPerKm = totalKm > 0 ? totalAll / totalKm : null;
 
   // Data pro koláčový graf
@@ -137,7 +145,9 @@ export default async function DashboardPage({
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         {vehicles.length > 0 && (
-          <VehicleSelector vehicles={vehicles.map((v) => ({ id: v.id, name: v.name }))} />
+          <Suspense fallback={<div className="h-9 w-48 bg-gray-100 rounded animate-pulse" />}>
+            <VehicleSelector vehicles={vehicles.map((v) => ({ id: v.id, name: v.name }))} />
+          </Suspense>
         )}
       </div>
 
