@@ -24,27 +24,63 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nepřihlášen" }, { status: 401 });
   }
 
-  const data = await request.json();
+  let data: Record<string, unknown>;
+  try {
+    data = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Neplatný JSON formát" }, { status: 400 });
+  }
 
-  const vehicle = await prisma.vehicle.findFirst({
-    where: { id: data.vehicleId, userId: session.user.id },
-  });
+  const vehicleId = typeof data.vehicleId === "string" ? data.vehicleId : "";
+  const maintenanceTypeId = typeof data.maintenanceTypeId === "string" ? data.maintenanceTypeId : "";
+  const parsedDate = data.date ? new Date(String(data.date)) : new Date(NaN);
+
+  if (!vehicleId || !maintenanceTypeId || Number.isNaN(parsedDate.getTime())) {
+    return NextResponse.json({ error: "Chybí povinná pole nebo neplatné datum" }, { status: 400 });
+  }
+
+  const [vehicle, maintenanceType] = await Promise.all([
+    prisma.vehicle.findFirst({
+      where: { id: vehicleId, userId: session.user.id },
+    }),
+    prisma.maintenanceType.findFirst({
+      where: { id: maintenanceTypeId, userId: session.user.id },
+    }),
+  ]);
 
   if (!vehicle) {
     return NextResponse.json({ error: "Vozidlo nenalezeno" }, { status: 404 });
   }
+  if (!maintenanceType) {
+    return NextResponse.json({ error: "Typ údržby nenalezen" }, { status: 404 });
+  }
+
+  const odometer = data.odometer != null && data.odometer !== "" ? Number(data.odometer) : null;
+  const cost = data.cost != null && data.cost !== "" ? Number(data.cost) : null;
+  const nextDueOdometer =
+    data.nextDueOdometer != null && data.nextDueOdometer !== "" ? Number(data.nextDueOdometer) : null;
+  const nextDueDate = data.nextDueDate ? new Date(String(data.nextDueDate)) : null;
+
+  if (
+    (odometer !== null && !Number.isFinite(odometer)) ||
+    (cost !== null && !Number.isFinite(cost)) ||
+    (nextDueOdometer !== null && !Number.isFinite(nextDueOdometer)) ||
+    (nextDueDate !== null && Number.isNaN(nextDueDate.getTime()))
+  ) {
+    return NextResponse.json({ error: "Neplatné číselné hodnoty nebo datum příští kontroly" }, { status: 400 });
+  }
 
   const entry = await prisma.maintenanceRecord.create({
     data: {
-      vehicleId: data.vehicleId,
-      maintenanceTypeId: data.maintenanceTypeId,
-      date: new Date(data.date),
-      description: data.description || null,
-      odometer: data.odometer ? parseInt(data.odometer) : null,
-      cost: data.cost ? parseFloat(data.cost) : null,
-      nextDueDate: data.nextDueDate ? new Date(data.nextDueDate) : null,
-      nextDueOdometer: data.nextDueOdometer ? parseInt(data.nextDueOdometer) : null,
-      note: data.note || null,
+      vehicleId,
+      maintenanceTypeId,
+      date: parsedDate,
+      description: typeof data.description === "string" && data.description ? data.description : null,
+      odometer: odometer !== null ? Math.trunc(odometer) : null,
+      cost,
+      nextDueDate,
+      nextDueOdometer: nextDueOdometer !== null ? Math.trunc(nextDueOdometer) : null,
+      note: typeof data.note === "string" && data.note ? data.note : null,
     },
   });
 

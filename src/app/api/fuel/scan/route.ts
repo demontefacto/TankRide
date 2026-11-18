@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type Part } from "@google/genai";
 
-interface ContentPart {
-  text?: string;
-  inlineData?: {
-    mimeType: string;
-    data: string;
-  };
-}
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
 
 interface ScanResult {
   quantity: number | null;
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData();
-    const parts: ContentPart[] = [];
+    const parts: Part[] = [];
 
     // Prompt instrukce pro model
     const instruction = `Jsi specializovaný asistent aplikace TankRide pro automatickou digitalizaci záznamů o tankování.
@@ -81,17 +82,17 @@ Pravidla:
     // Zpracování nahraných souborů
     const filesToProcess: { file: File; label: string }[] = [];
 
-    const receipt = formData.get("receipt") as File | null;
-    const dashboard = formData.get("dashboard") as File | null;
-    const genericImage = formData.get("image") as File | null;
+    const receipt = formData.get("receipt");
+    const dashboard = formData.get("dashboard");
+    const genericImage = formData.get("image");
 
-    if (receipt && receipt.size > 0) {
+    if (receipt instanceof File && receipt.size > 0) {
       filesToProcess.push({ file: receipt, label: "Účtenka z čerpací stanice" });
     }
-    if (dashboard && dashboard.size > 0) {
+    if (dashboard instanceof File && dashboard.size > 0) {
       filesToProcess.push({ file: dashboard, label: "Palubní deska / tachometr" });
     }
-    if (filesToProcess.length === 0 && genericImage && genericImage.size > 0) {
+    if (filesToProcess.length === 0 && genericImage instanceof File && genericImage.size > 0) {
       filesToProcess.push({ file: genericImage, label: "Fotografie k analýze" });
     }
 
@@ -103,9 +104,22 @@ Pravidla:
     }
 
     for (const item of filesToProcess) {
+      if (item.file.size > MAX_FILE_SIZE_BYTES) {
+        return NextResponse.json(
+          { error: `Soubor ${item.file.name} překračuje maximální velikost 10 MB.` },
+          { status: 400 }
+        );
+      }
+      const mimeType = item.file.type || "image/jpeg";
+      if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+        return NextResponse.json(
+          { error: `Nepodporovaný typ souboru (${mimeType}).` },
+          { status: 400 }
+        );
+      }
+
       const arrayBuffer = await item.file.arrayBuffer();
       const base64Data = Buffer.from(arrayBuffer).toString("base64");
-      const mimeType = item.file.type || "image/jpeg";
 
       parts.push({
         text: `Následuje soubor: ${item.label} (${item.file.name})`,
@@ -123,20 +137,21 @@ Pravidla:
 
     const response = await ai.models.generateContent({
       model: modelName,
-      contents: parts as unknown as string[],
+      contents: parts,
       config: {
         responseMimeType: "application/json",
       },
     });
 
-    const responseText = response.text || "{}";
+    const rawText = (response.text || "{}").trim();
+    const cleanedJson = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
     let parsedData: ScanResult;
     try {
-      parsedData = JSON.parse(responseText) as ScanResult;
+      parsedData = JSON.parse(cleanedJson) as ScanResult;
     } catch {
-      console.error("Chyba při parsování JSON z Gemini:", responseText);
+      console.error("Chyba při parsování JSON z Gemini:", rawText);
       return NextResponse.json(
-        { error: "AI nevrátila platný formát dat.", raw: responseText },
+        { error: "AI nevrátila platný formát dat.", raw: rawText },
         { status: 500 }
       );
     }

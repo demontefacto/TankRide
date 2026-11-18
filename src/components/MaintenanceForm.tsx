@@ -49,8 +49,12 @@ export default function MaintenanceForm({
 
     if (selectedType.intervalMonths && date) {
       const d = new Date(date);
-      d.setMonth(d.getMonth() + selectedType.intervalMonths);
-      setNextDueDate(d.toISOString().split("T")[0]);
+      if (!Number.isNaN(d.getTime())) {
+        d.setMonth(d.getMonth() + selectedType.intervalMonths);
+        setNextDueDate(d.toISOString().split("T")[0]);
+      } else {
+        setNextDueDate("");
+      }
     } else {
       setNextDueDate("");
     }
@@ -112,7 +116,7 @@ export default function MaintenanceForm({
     });
 
     if (!res.ok) {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setError(data.error || "Chyba při ukládání");
       setLoading(false);
       return;

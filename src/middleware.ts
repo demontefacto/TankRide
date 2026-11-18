@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import type { NextFetchEvent, NextRequest } from 'next/server';
 
 // Zakázané vzory cest a pokusů o sondu citlivých souborů
 const BLOCKED_PATH_PATTERNS = [
@@ -41,10 +41,9 @@ async function reportToSentinel(ip: string, reason: string, path: string, userAg
   const sentinelUrl = process.env.SENTINEL_REPORT_URL || 'http://agudesign_sentinel:8000/api/v1/report';
   const sentinelToken = process.env.SENTINEL_API_TOKEN || 'agu_sentinel_secret_token_change_me';
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2000);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-
     const res = await fetch(sentinelUrl, {
       method: 'POST',
       headers: {
@@ -61,7 +60,6 @@ async function reportToSentinel(ip: string, reason: string, path: string, userAg
       }),
       signal: controller.signal,
     });
-    clearTimeout(timeout);
 
     if (!res.ok) {
       console.warn(`[TankRide Shield] Sentinel vrátil stav ${res.status} pro IP ${ip}`);
@@ -70,10 +68,12 @@ async function reportToSentinel(ip: string, reason: string, path: string, userAg
     // Graceful fallback: Pokud Sentinel zrovna neběží, Tankride nesmí spadnout
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.warn(`[TankRide Shield] Nepodařilo se nahlásit incident Sentinelu (${errorMsg})`);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname, search } = request.nextUrl;
 
   // 1. Kontrola podezřelých vzorů v cestě
@@ -107,9 +107,11 @@ export async function middleware(request: NextRequest) {
     // Nahlásit Sentinelu, pokud se nejedná o lokální IP
     if (!isPrivateIp(clientIp) && clientIp !== 'unknown') {
       const referer = request.headers.get('referer') || '';
-      const logSnippet = `${request.method} ${pathname}${search ? '?' + search : ''}\nUser-Agent: ${userAgent}\nReferer: ${referer}`;
-      // Fire-and-forget hlášení na pozadí
-      reportToSentinel(clientIp, matchedReason, pathname, userAgent, logSnippet).catch(() => {});
+      const logSnippet = `${request.method} ${pathname}${search}\nUser-Agent: ${userAgent}\nReferer: ${referer}`;
+      // Bezpečné asynchronní odeslání i v Edge runtime
+      event.waitUntil(
+        reportToSentinel(clientIp, matchedReason, pathname, userAgent, logSnippet).catch(() => {})
+      );
     }
 
     return new NextResponse('403 Forbidden • AGU Design Perimeter Shield', {
